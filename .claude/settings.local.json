@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"E:/Excel Datasets\" && python ikea_analysis.py 2>&1)",
+      "Bash(cd \"E:/Excel Datasets\" && python ikea_advanced_ds.py 2>&1)"
+    ]
+  }
+}

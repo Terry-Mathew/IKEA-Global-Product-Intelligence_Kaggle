@@ -1,19 +1,31 @@
 import pandas as pd
 import numpy as np
+from pathlib import Path
 from scipy import stats
 
-# Load and clean data
-print("Loading IKEA dataset...")
-df = pd.read_csv('E:/Excel Datasets/IKEA_product_catalog.csv', header=None, low_memory=False)
-df.columns = ['product_id_country', 'product_id', 'product_name', 'product_type', 
-              'dimensions', 'description', 'category', 'subcategory', 
-              'rating', 'review_count', 'promotion', 'available', 
-              'product_url', 'price', 'currency', 'extra1', 'extra2', 'country']
-df = df.iloc[1:].reset_index(drop=True)
-df['price'] = pd.to_numeric(df['price'], errors='coerce')
-df['rating'] = pd.to_numeric(df['rating'], errors='coerce')
-df['review_count'] = pd.to_numeric(df['review_count'], errors='coerce')
-df_clean = df[(df['price'] > 0) & (df['price'] < 100000)].copy()
+# ── Step 1 guard: require cleaned data ──────────────────────────────────────
+CLEAN_PATH = Path('e:/Excel Datasets/ikea_clean.csv')
+if not CLEAN_PATH.exists():
+    raise FileNotFoundError(
+        f"{CLEAN_PATH} not found.\n"
+        "Run  python ikea_cleaner.py  first to generate the cleaned dataset."
+    )
+
+# Load cleaned data — bad prices, duplicates, sentinel strings already handled
+print(f"Loading cleaned data from: {CLEAN_PATH}")
+df = pd.read_csv(CLEAN_PATH, low_memory=False)
+print(f"  Rows: {len(df):,}  |  Products: {df['product_id'].nunique():,}")
+
+# Column aliases to match the rest of this file's existing variable names
+df = df.rename(columns={
+    'product_rating':       'rating',
+    'product_rating_count': 'review_count',
+    'main_category':        'category',
+    'sub_category':         'subcategory',
+})
+
+# df_clean = df here since cleaning already happened in ikea_cleaner.py
+df_clean = df.copy()
 
 print('='*60)
 print('TECHNIQUE 1: DISTRIBUTION ANALYSIS')
@@ -158,8 +170,17 @@ print('Why: Shows if promoted products get better ratings/reviews')
 print()
 
 # Compare promoted vs non-promoted
-promo_products = df_clean[df_clean['promotion'] != 'none']
-non_promo = df_clean[df_clean['promotion'] == 'none']
+# Note: ikea_cleaner.py replaced the literal string "none" with NaN,
+# so we use sale_tag (the reliable field) rather than the 'promotion' column.
+if 'sale_tag' in df_clean.columns:
+    promo_products = df_clean[df_clean['sale_tag'].notna() & (df_clean['sale_tag'] != 'NONE')]
+    non_promo      = df_clean[df_clean['sale_tag'].isna()  | (df_clean['sale_tag'] == 'NONE')]
+elif 'promotion' in df_clean.columns:
+    promo_products = df_clean[df_clean['promotion'].notna()]
+    non_promo      = df_clean[df_clean['promotion'].isna()]
+else:
+    promo_products = df_clean.iloc[0:0]   # empty
+    non_promo      = df_clean
 
 print(f'Promotional Products: {len(promo_products):,}')
 print(f'Non-Promotional Products: {len(non_promo):,}')

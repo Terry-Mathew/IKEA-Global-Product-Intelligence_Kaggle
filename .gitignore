@@ -1,2 +1,6 @@
 .minimax/
 *lock*
+*.csv
+*.html
+*.png
+__pycache__/
